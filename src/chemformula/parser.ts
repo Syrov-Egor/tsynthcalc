@@ -1,5 +1,3 @@
-import { futimesSync } from "fs";
-
 export const formRegexes = {
     atomRegex: RegExp(`([A-Z][a-z]*)`),
     coefRegex: RegExp(`((\d+(\.\d+)?)*)`),
@@ -17,7 +15,7 @@ type atom = {
     amount: number;
 }
 
-export function parseToMap(formula: string) {
+export function parseToMap(formula: string): [Map<string, number>, number] {
     let tokens: string[] = []
     let mol: Map<string, number> = new Map()
     let i: number = 0
@@ -34,7 +32,7 @@ export function parseToMap(formula: string) {
                 i += matches[0].length
             }
 
-            let submol, length = parseToMap("(" + formula.slice(i+1) + ")" + weight.toString)
+            let [submol, length] = parseToMap("(" + formula.slice(i+1) + ")" + weight.toString)
             mol = fuse(mol, submol, 1.0)
             i += length + 1
         }
@@ -50,11 +48,11 @@ export function parseToMap(formula: string) {
 
             let tokenStr = tokens.join()
             let submol = toMap(tokenStr.matchAll(formRegexes.atomAndCoefRegex))
-            return fuse(mol, submol, weight), i
+            return [fuse(mol, submol, weight), i]
         }
 
         else if (formRegexes.openerBrackets.includes(token)) {
-            let submol, length = parseToMap(formula.slice(i+1))
+            let [submol, length] = parseToMap(formula.slice(i+1))
             mol = fuse(mol, submol, 1.0)
             i += length + 1
         }
@@ -65,7 +63,12 @@ export function parseToMap(formula: string) {
 
         i++
     }
-    return
+
+    let tokenStr = tokens.join()
+    let extractFromTokens = tokenStr.matchAll(formRegexes.atomAndCoefRegex)
+    let fusedMap = fuse(mol, toMap(extractFromTokens), 1.0)
+
+    return [fusedMap, i]
 }
 
 function fuse(mol1: Map<string, number>, mol2: Map<string, number>, weight: number): Map<string, number> {
